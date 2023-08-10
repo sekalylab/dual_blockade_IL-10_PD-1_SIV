@@ -4,3 +4,6 @@
 .Ruserdata
 data/raw
 data/processed
+results/*txt
+results/*tsv
+results/*xlsx
