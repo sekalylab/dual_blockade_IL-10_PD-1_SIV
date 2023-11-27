@@ -5,3 +5,4 @@
 **/.DS_Store
 data/raw
 src/data_cleaning.Rmd
+.gitignore
