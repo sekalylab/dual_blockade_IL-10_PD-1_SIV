@@ -2,8 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+**/.DS_Store
 data/raw
-data/processed
-results/*txt
-results/*tsv
-results/*xlsx
+src/data_cleaning.Rmd

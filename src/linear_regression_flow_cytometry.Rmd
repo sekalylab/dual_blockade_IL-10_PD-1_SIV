@@ -1,5 +1,5 @@
 ---
-title: "Linear regression - Flow cytometry features"
+title: "Dual blockade IL-10 / PD1 SIV - Linear regression - Flow cytometry + Cytokine features"
 author: "ten-Caten, Felipe - ftencat@emory.edu"
 editor_options: 
   chunk_output_type: console
@@ -7,153 +7,70 @@ editor_options:
 
 ```{r Load libraries}
 library(tidyverse)
-library(readxl)
 library(rstatix)
-
 ```
 
-```{r Linear models - General features}
-data <- read_excel('data/raw/Master_noPD1_UMAP_Manual_CLEAN.xlsx') %>% 
-  mutate(across(everything(), ~ifelse(. == "NA", NA, .))) %>% 
-  mutate(across(-c(ID_Merge, group, animal, `A*01Status`), as.double)) 
+```{r Linear regression}
+data <- read_tsv('data/raw_clean/raw_data_all_timepoints_flowcytometry_cytokines.tsv')
 
 wk <- unique(data$`WkPost-TX`)
 
-df.out <- data.frame(parameters = NA, `ref.group` = NA, term = NA, estimate = NA, 
+df.out <- data.frame(parameter = NA, `ref.group` = NA, term = NA, estimate = NA, 
                      `std.error` = NA, statistic = NA, `p.value` = NA , 
                      `p.value.adj` = NA, `WkPost.TX` = NA)
 
 for(i in wk) {
   df <- data %>%  
-    pivot_longer(-c(order, ID_Merge, group, animal, `A*01Status`, year, `WkPost-TX`, 
-                    `WkPost-ATI`, `LOG_SIV/DNA_LN_per10^6correctedCD4Live`,
-                    `LOG_SIVRNA_LN_per10^6correctedCD4Live`, log_VL), 
-                 names_to = 'parameters') %>%
     mutate(year = factor(year)) %>% 
     filter(!is.na(value)) %>% 
-    filter(`WkPost-TX` == i) %>% # Filter according week
-    dplyr::select(-c(order, ID_Merge, animal, `A*01Status`, `WkPost-TX`,
-                    `WkPost-ATI`, `LOG_SIV/DNA_LN_per10^6correctedCD4Live`,
-                    `LOG_SIVRNA_LN_per10^6correctedCD4Live`, log_VL)) %>% 
+    filter(`WkPost-TX` == i) %>% # Filter per week
+    dplyr::select(-c(animal, `A*01Status`, `WkPost-TX`, `WkPost-ATI`)) %>% 
     dplyr::mutate(group = factor(group)) %>% 
     dplyr::mutate(group = fct_relevel(group, 'aIL10+aPD1'))
   
   df.stat <- df %>%
-    group_by(parameters, group) %>%
+    group_by(parameter, group) %>%
     filter(length(unique(year)) > 1) %>% 
-    group_by(parameters) %>% 
+    group_by(parameter) %>% 
     filter(length(unique(group)) > 1) %>%  
     nest(data = c(group, year, value)) %>% 
     mutate(model = map(data, ~lm(value ~ group + year, data = .)),
            tidied = map(model, tidy)) %>% 
     unnest(tidied) %>% 
-    group_by(parameters) %>% 
+    group_by(parameter) %>% 
     adjust_pvalue(p.col = 'p.value')
   
   df.stat.signif <- df.stat %>%
     dplyr::filter(term %in% c('groupaIL10', 'groupControl')) %>%
     mutate(`WkPost.TX` = i, `ref.group` = 'aIL10+aPD1') %>%
-    dplyr::select(parameters, `ref.group`, term, estimate, `std.error`, 
-                          statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
+    dplyr::select(parameter, `ref.group`, term, estimate, `std.error`, 
+                  statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
   
   # Ctrl as reference
   df.control <- df %>%
     dplyr::mutate(group = fct_relevel(group, 'Control'))
   
   df.control.stat <- df.control %>%
-    group_by(parameters, group) %>%
+    group_by(parameter, group) %>%
     filter(length(unique(year)) > 1) %>% 
-    group_by(parameters) %>% 
+    group_by(parameter) %>% 
     filter(length(unique(group)) > 1) %>%  
     nest(data = c(group, year, value)) %>% 
     mutate(model = map(data, ~lm(value ~ group + year, data = .)),
            tidied = map(model, tidy)) %>% 
     unnest(tidied) %>% 
-    group_by(parameters) %>% 
+    group_by(parameter) %>% 
     adjust_pvalue(p.col = 'p.value')
   
   df.control.stat.signif <- df.control.stat %>%
     dplyr::filter(term %in% c('groupaIL10')) %>%
     mutate(`WkPost.TX` = i, `ref.group` = 'Control') %>%
-    dplyr::select(parameters,`ref.group`, term, estimate, `std.error`, 
+    dplyr::select(parameter,`ref.group`, term, estimate, `std.error`, 
                           statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
     
   df.out <- rbind(df.out, df.stat.signif, df.control.stat.signif)
 }
 
-#write_tsv(df.out, 'results/linear_model_treatments_comparison.tsv')
+#write_tsv(df.out %>% filter(!is.na(df.out$parameter)), 
+#          'results/linear_regression_group_comparison.tsv')
 ```
-
-```{r Linear models - Exhaustion features}
-data <- readxl::read_excel('data/raw/Merge_Hakeem_IRF4_TOX_code.xlsx', 
-                         na = c('NA', 'n_a'))
-
-wk <- unique(data$`WkPost-TX`)
-
-df.out <- data.frame(parameters = NA, `ref.group` = NA, term = NA, estimate = NA, 
-                     `std.error` = NA, statistic = NA, `p.value` = NA , 
-                     `p.value.adj` = NA, `WkPost.TX` = NA)
-
-for(i in wk) {
-  df <- data %>%  
-    pivot_longer(-c(order, ID_Merge, group, animal, `A*01Status`, year, `WkPost-TX`, 
-                    `WkPost-ATI`, `LOG_SIV_DNA_LN_per10^6correctedCD4Live`,
-                    `LOG_SIVRNA_LN_per10^6correctedCD4Live`, log_VL), 
-                 names_to = 'parameters') %>%
-    mutate(year = factor(year)) %>% 
-    filter(!is.na(value)) %>% 
-    filter(`WkPost-TX` == i) %>% # Filter according week
-    dplyr::select(-c(order, ID_Merge, animal, `A*01Status`, `WkPost-TX`,
-                    `WkPost-ATI`, `LOG_SIV_DNA_LN_per10^6correctedCD4Live`,
-                    `LOG_SIVRNA_LN_per10^6correctedCD4Live`, log_VL)) %>% 
-    dplyr::mutate(group = factor(group)) %>% 
-    dplyr::mutate(group = fct_relevel(group, 'aIL10+aPD1'))
-  
-  df.stat <- df %>%
-    group_by(parameters, group) %>%
-    filter(length(unique(year)) > 1) %>% 
-    group_by(parameters) %>% 
-    filter(length(unique(group)) > 1) %>%  
-    nest(data = c(group, year, value)) %>% 
-    mutate(model = map(data, ~lm(value ~ group + year, data = .)),
-           tidied = map(model, tidy)) %>% 
-    unnest(tidied) %>% 
-    group_by(parameters) %>% 
-    adjust_pvalue(p.col = 'p.value')
-  
-  df.stat.signif <- df.stat %>%
-    dplyr::filter(term %in% c('groupaIL10', 'groupControl')) %>%
-    mutate(`WkPost.TX` = i, `ref.group` = 'aIL10+aPD1') %>%
-    dplyr::select(parameters, `ref.group`, term, estimate, `std.error`, 
-                          statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
-  
-  # Ctrl as reference
-  df.control <- df %>%
-    dplyr::mutate(group = fct_relevel(group, 'Control'))
-  
-  df.control.stat <- df.control %>%
-    group_by(parameters, group) %>%
-    filter(length(unique(year)) > 1) %>% 
-    group_by(parameters) %>% 
-    filter(length(unique(group)) > 1) %>%  
-    nest(data = c(group, year, value)) %>% 
-    mutate(model = map(data, ~lm(value ~ group + year, data = .)),
-           tidied = map(model, tidy)) %>% 
-    unnest(tidied) %>% 
-    group_by(parameters) %>% 
-    adjust_pvalue(p.col = 'p.value')
-  
-  df.control.stat.signif <- df.control.stat %>%
-    dplyr::filter(term %in% c('groupaIL10')) %>%
-    mutate(`WkPost.TX` = i, `ref.group` = 'Control') %>%
-    dplyr::select(parameters,`ref.group`, term, estimate, `std.error`, 
-                          statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
-    
-  df.out <- rbind(df.out, df.stat.signif, df.control.stat.signif)
-}
-
-#write_tsv(df.out, 
-#          'results/linear_model_treatments_comparison_Hakem_IRF4_TOX.tsv')
-```
-
-
