@@ -1,0 +1,76 @@
+---
+title: "Dual blockade IL-10 / PD1 SIV - Linear regression - Flow cytometry + Cytokine features"
+author: "ten-Caten, Felipe - ftencat@emory.edu"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r Load libraries}
+library(tidyverse)
+library(rstatix)
+```
+
+```{r Linear regression}
+data <- read_tsv('data/raw_clean/raw_data_all_timepoints_flowcytometry_cytokines.tsv')
+
+wk <- unique(data$`WkPost-TX`)
+
+df.out <- data.frame(parameter = NA, `ref.group` = NA, term = NA, estimate = NA, 
+                     `std.error` = NA, statistic = NA, `p.value` = NA , 
+                     `p.value.adj` = NA, `WkPost.TX` = NA)
+
+for(i in wk) {
+  df <- data %>%  
+    mutate(year = factor(year)) %>% 
+    filter(!is.na(value)) %>% 
+    filter(`WkPost-TX` == i) %>% # Filter per week
+    dplyr::select(-c(animal, `A*01Status`, `WkPost-TX`, `WkPost-ATI`)) %>% 
+    dplyr::mutate(group = factor(group)) %>% 
+    dplyr::mutate(group = fct_relevel(group, 'aIL10+aPD1'))
+  
+  df.stat <- df %>%
+    group_by(parameter, group) %>%
+    filter(length(unique(year)) > 1) %>% 
+    group_by(parameter) %>% 
+    filter(length(unique(group)) > 1) %>%  
+    nest(data = c(group, year, value)) %>% 
+    mutate(model = map(data, ~lm(value ~ group + year, data = .)),
+           tidied = map(model, tidy)) %>% 
+    unnest(tidied) %>% 
+    group_by(parameter) %>% 
+    adjust_pvalue(p.col = 'p.value')
+  
+  df.stat.signif <- df.stat %>%
+    dplyr::filter(term %in% c('groupaIL10', 'groupControl')) %>%
+    mutate(`WkPost.TX` = i, `ref.group` = 'aIL10+aPD1') %>%
+    dplyr::select(parameter, `ref.group`, term, estimate, `std.error`, 
+                  statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
+  
+  # Ctrl as reference
+  df.control <- df %>%
+    dplyr::mutate(group = fct_relevel(group, 'Control'))
+  
+  df.control.stat <- df.control %>%
+    group_by(parameter, group) %>%
+    filter(length(unique(year)) > 1) %>% 
+    group_by(parameter) %>% 
+    filter(length(unique(group)) > 1) %>%  
+    nest(data = c(group, year, value)) %>% 
+    mutate(model = map(data, ~lm(value ~ group + year, data = .)),
+           tidied = map(model, tidy)) %>% 
+    unnest(tidied) %>% 
+    group_by(parameter) %>% 
+    adjust_pvalue(p.col = 'p.value')
+  
+  df.control.stat.signif <- df.control.stat %>%
+    dplyr::filter(term %in% c('groupaIL10')) %>%
+    mutate(`WkPost.TX` = i, `ref.group` = 'Control') %>%
+    dplyr::select(parameter,`ref.group`, term, estimate, `std.error`, 
+                          statistic, `p.value`, `p.value.adj`, `WkPost.TX`)
+    
+  df.out <- rbind(df.out, df.stat.signif, df.control.stat.signif)
+}
+
+#write_tsv(df.out %>% filter(!is.na(df.out$parameter)), 
+#          'results/linear_regression_group_comparison.tsv')
+```

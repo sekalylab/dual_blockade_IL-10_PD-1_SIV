@@ -1,0 +1,27 @@
+{
+    "id": "6CE9E846",
+    "path": "~/Library/CloudStorage/OneDrive-EmoryUniversity/Projects/dual_blockade_IL-10_PD-1_SIV/src/manuscript_plots.Rmd",
+    "project_path": "src/manuscript_plots.Rmd",
+    "type": "r_markdown",
+    "hash": "1858476918",
+    "contents": "",
+    "dirty": false,
+    "created": 1700970171735.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "chunk_output_type": "console",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "599,1",
+        "scrollLine": "576"
+    },
+    "folds": "7|21|24|0|\n26|47|195|0|\n197|37|275|0|\n227|30|234|0|\n277|67|388|0|\n390|31|477|0|\n418|30|425|0|\n479|100|719|0|\n517|12|552|0|\n721|65|934|0|\n732|30|768|0|\n769|30|806|0|\n807|27|933|71|\n853|28|924|0|\n936|34|1106|0|\n1108|22|1347|0|\n1276|27|1323|0|\n1287|43|1293|48|\n1349|38|1380|0|\n1382|31|1569|0|\n1387|8|1447|0|\n1448|8|1508|0|\n1509|9|1568|96|\n",
+    "lastKnownWriteTime": 1701110261,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1701110283044,
+    "read_only": false,
+    "read_only_alternatives": []
+}
